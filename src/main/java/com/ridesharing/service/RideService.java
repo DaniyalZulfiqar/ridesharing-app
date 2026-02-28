@@ -21,6 +21,7 @@ import com.ridesharing.util.FareCalculator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -44,98 +45,186 @@ public class RideService {
     }
 
     // ── FR-RI01 to FR-RI05 ───────────────────────────────────
+
     public RideResponse requestRide(RequestRideRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findRider → ResourceNotFoundException
-        // 2. Check rider has no active ride → ConflictException (A5)
-        // 3. driverRepository.findAllByAvailableTrue() → NoDriverAvailableException if empty (FR-RI02/03)
-        // 4. fareCalculator.calculate(distanceKm)
-        // 5. Build Ride entity (status=REQUESTED set in @PrePersist), save
-        // 6. Return RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Rider rider = riderRepository.findById(request.getRiderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Rider not found: " + request.getRiderId()));
+
+        boolean hasActiveRide = rideRepository.existsByRiderIdAndStatusIn(
+                rider.getId(),
+                List.of(RideStatus.REQUESTED, RideStatus.ACCEPTED, RideStatus.IN_PROGRESS));
+        if (hasActiveRide) {
+            throw new ConflictException("Rider already has an active ride.");
+        }
+
+        List<Driver> availableDrivers = driverRepository.findAllByAvailableTrue();
+        if (availableDrivers.isEmpty()) {
+            throw new NoDriverAvailableException("No drivers are available at this time.");
+        }
+
+        Ride ride = Ride.builder()
+                .rider(rider)
+                .pickupLocation(request.getPickupLocation())
+                .dropoffLocation(request.getDropoffLocation())
+                .distanceKm(request.getDistanceKm())
+                .fareAmount(fareCalculator.calculate(request.getDistanceKm()))
+                .build();
+
+        return toResponse(rideRepository.save(ride));
     }
 
     // ── FR-RI11 ──────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public RideResponse getById(UUID rideId) {
-        // TODO: Phase 3 — implement
-        // 1. findById → ResourceNotFoundException if absent
-        // 2. Map to RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Ride ride = rideRepository.findByIdWithActors(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
+        return toResponse(ride);
     }
 
     // ── FR-RI06 ──────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public List<RideResponse> listByStatus(RideStatus status) {
-        // TODO: Phase 3 — implement
-        // 1. If status param is present: rideRepository.findAllByStatus(status)
-        // 2. If absent: rideRepository.findAll()
-        // 3. Map each Ride to RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        List<Ride> rides = (status != null)
+                ? rideRepository.findAllByStatusWithActors(status)
+                : rideRepository.findAllWithActors();
+        return rides.stream().map(RideService::toResponse).toList();
     }
 
     // ── FR-RI07 ──────────────────────────────────────────────
+
     public RideResponse acceptRide(UUID rideId, DriverActionRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findRide → ResourceNotFoundException
-        // 2. Validate ride.status == REQUESTED → ConflictException
-        // 3. findDriver → ResourceNotFoundException
-        // 4. Driver must be available + no active ride → ConflictException (A4)
-        // 5. ride.setDriver(driver), ride.setStatus(ACCEPTED), ride.setAcceptedAt(now)
-        // 6. driver.setAvailable(false)
-        // 7. Save both, return RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Ride ride = rideRepository.findByIdWithActors(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
+
+        if (ride.getStatus() != RideStatus.REQUESTED) {
+            throw new ConflictException(
+                    "Ride is not in REQUESTED status (current: " + ride.getStatus() + ").");
+        }
+
+        Driver driver = driverRepository.findById(request.getDriverId())
+                .orElseThrow(() -> new ResourceNotFoundException("Driver not found: " + request.getDriverId()));
+
+        if (!driver.isAvailable()) {
+            throw new ConflictException("Driver is not available.");
+        }
+
+        boolean driverHasActiveRide = rideRepository.existsByDriverIdAndStatusIn(
+                driver.getId(), List.of(RideStatus.ACCEPTED, RideStatus.IN_PROGRESS));
+        if (driverHasActiveRide) {
+            throw new ConflictException("Driver already has an active ride.");
+        }
+
+        ride.setDriver(driver);
+        ride.setStatus(RideStatus.ACCEPTED);
+        ride.setAcceptedAt(LocalDateTime.now());
+        driver.setAvailable(false);
+
+        driverRepository.save(driver);
+        return toResponse(rideRepository.save(ride));
     }
 
     // ── FR-RI08 ──────────────────────────────────────────────
+
     public RideResponse rejectRide(UUID rideId, DriverActionRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findRide → ResourceNotFoundException
-        // 2. Validate ride.status == REQUESTED → ConflictException
-        // 3. findDriver (must exist) → ResourceNotFoundException
-        // 4. No state change — ride stays REQUESTED
-        // 5. Return RideResponse with message
-        throw new UnsupportedOperationException("Not yet implemented");
+        Ride ride = rideRepository.findByIdWithActors(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
+
+        if (ride.getStatus() != RideStatus.REQUESTED) {
+            throw new ConflictException(
+                    "Ride is not in REQUESTED status (current: " + ride.getStatus() + ").");
+        }
+
+        if (!driverRepository.existsById(request.getDriverId())) {
+            throw new ResourceNotFoundException("Driver not found: " + request.getDriverId());
+        }
+
+        // No state change — ride remains REQUESTED for another driver to accept.
+        return toResponse(ride);
     }
 
     // ── FR-RI09 ──────────────────────────────────────────────
+
     public RideResponse startRide(UUID rideId, DriverActionRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findRide → ResourceNotFoundException
-        // 2. Validate ride.status == ACCEPTED → ConflictException
-        // 3. Validate driver is the assigned driver → ForbiddenException
-        // 4. ride.setStatus(IN_PROGRESS), ride.setStartedAt(now)
-        // 5. Save and return RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Ride ride = rideRepository.findByIdWithActors(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
+
+        if (ride.getStatus() != RideStatus.ACCEPTED) {
+            throw new ConflictException(
+                    "Ride is not in ACCEPTED status (current: " + ride.getStatus() + ").");
+        }
+
+        if (!ride.getDriver().getId().equals(request.getDriverId())) {
+            throw new ForbiddenException("Only the assigned driver can start this ride.");
+        }
+
+        ride.setStatus(RideStatus.IN_PROGRESS);
+        ride.setStartedAt(LocalDateTime.now());
+        return toResponse(rideRepository.save(ride));
     }
 
     // ── FR-RI10 ──────────────────────────────────────────────
+
     public RideResponse completeRide(UUID rideId, DriverActionRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findRide → ResourceNotFoundException
-        // 2. Validate ride.status == IN_PROGRESS → ConflictException
-        // 3. Validate driver is the assigned driver → ForbiddenException
-        // 4. ride.setStatus(COMPLETED), ride.setCompletedAt(now)
-        // 5. driver.setAvailable(true)
-        // 6. Save both, return RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Ride ride = rideRepository.findByIdWithActors(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
+
+        if (ride.getStatus() != RideStatus.IN_PROGRESS) {
+            throw new ConflictException(
+                    "Ride is not in IN_PROGRESS status (current: " + ride.getStatus() + ").");
+        }
+
+        if (!ride.getDriver().getId().equals(request.getDriverId())) {
+            throw new ForbiddenException("Only the assigned driver can complete this ride.");
+        }
+
+        ride.setStatus(RideStatus.COMPLETED);
+        ride.setCompletedAt(LocalDateTime.now());
+
+        Driver driver = ride.getDriver();
+        driver.setAvailable(true);
+        driverRepository.save(driver);
+
+        return toResponse(rideRepository.save(ride));
     }
 
     // ── FR-C01 / FR-C02 / FR-C03 / FR-C04 ───────────────────
+
     public RideResponse cancelRide(UUID rideId, CancelRideRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findRide → ResourceNotFoundException
-        // 2. Validate status is REQUESTED or ACCEPTED → ConflictException if not
-        // 3. Validate actor authorization:
-        //    - RIDER:  actorId must match ride.rider.id and status != IN_PROGRESS → ForbiddenException
-        //    - DRIVER: actorId must match ride.driver.id and status == ACCEPTED → ForbiddenException
-        // 4. ride.setStatus(CANCELLED), ride.setCancellationReason, ride.setCancelledAt(now)
-        // 5. If cancelled by DRIVER: driver.setAvailable(true)  (FR-C04)
-        // 6. Save and return RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Ride ride = rideRepository.findByIdWithActors(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Ride not found: " + rideId));
+
+        if (ride.getStatus() != RideStatus.REQUESTED && ride.getStatus() != RideStatus.ACCEPTED) {
+            throw new ConflictException(
+                    "Ride cannot be cancelled in its current status: " + ride.getStatus() + ".");
+        }
+
+        if ("RIDER".equals(request.getCancelledBy())) {
+            if (!ride.getRider().getId().equals(request.getActorId())) {
+                throw new ForbiddenException("Rider is not authorized to cancel this ride.");
+            }
+        } else {
+            // DRIVER: can only cancel a ride they have accepted
+            if (ride.getStatus() != RideStatus.ACCEPTED) {
+                throw new ForbiddenException("Driver can only cancel a ride that has been accepted.");
+            }
+            if (ride.getDriver() == null || !ride.getDriver().getId().equals(request.getActorId())) {
+                throw new ForbiddenException("Driver is not authorized to cancel this ride.");
+            }
+            ride.getDriver().setAvailable(true);
+            driverRepository.save(ride.getDriver());
+        }
+
+        ride.setStatus(RideStatus.CANCELLED);
+        ride.setCancellationReason(request.getReason());
+        ride.setCancelledAt(LocalDateTime.now());
+
+        return toResponse(rideRepository.save(ride));
     }
 
     // ── mapping helper ───────────────────────────────────────
+
     static RideResponse toResponse(Ride ride) {
         RiderSummaryResponse riderSummary = RiderSummaryResponse.builder()
                 .id(ride.getRider().getId())
