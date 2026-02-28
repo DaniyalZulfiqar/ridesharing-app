@@ -59,7 +59,7 @@ public class RideService {
 
         List<Driver> availableDrivers = driverRepository.findAllByAvailableTrue();
         if (availableDrivers.isEmpty()) {
-            throw new NoDriverAvailableException("No drivers are available at this time.");
+            throw new NoDriverAvailableException();
         }
 
         Ride ride = Ride.builder()
