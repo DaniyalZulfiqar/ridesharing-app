@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS rides (
     started_at          DATETIME          NULL,
     completed_at        DATETIME          NULL,
     cancelled_at        DATETIME          NULL,
+    version             BIGINT        NOT NULL DEFAULT 0,
     PRIMARY KEY (id),
     CONSTRAINT fk_rides_rider  FOREIGN KEY (rider_id)  REFERENCES riders(id),
     CONSTRAINT fk_rides_driver FOREIGN KEY (driver_id) REFERENCES drivers(id),

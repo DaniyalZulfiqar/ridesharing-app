@@ -4,6 +4,7 @@ import com.ridesharing.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -36,6 +37,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNoDriver(
             NoDriverAvailableException ex, HttpServletRequest request) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, ex.getMessage(), request.getRequestURI());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT,
+                "This ride was just updated by another request. Please try again.",
+                request.getRequestURI());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
