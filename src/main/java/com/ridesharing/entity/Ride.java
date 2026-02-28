@@ -58,6 +58,9 @@ public class Ride {
     private LocalDateTime completedAt;
     private LocalDateTime cancelledAt;
 
+    @Version
+    private Long version;
+
     @PrePersist
     protected void onCreate() {
         requestedAt = LocalDateTime.now();
