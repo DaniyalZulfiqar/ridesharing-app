@@ -27,31 +27,41 @@ public class RiderService {
     }
 
     // ── FR-R01 ───────────────────────────────────────────────
+
     public RiderResponse register(RegisterRiderRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. Check riderRepository.existsByEmail → ConflictException if duplicate
-        // 2. Build and save Rider entity
-        // 3. Map to RiderResponse and return
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (riderRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Email already registered: " + request.getEmail());
+        }
+
+        Rider rider = Rider.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .build();
+
+        return toResponse(riderRepository.save(rider));
     }
 
     // ── FR-R02 ───────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public RiderResponse getById(UUID riderId) {
-        // TODO: Phase 3 — implement
-        // 1. riderRepository.findById → ResourceNotFoundException if absent
-        // 2. Map to RiderResponse and return
-        throw new UnsupportedOperationException("Not yet implemented");
+        Rider rider = riderRepository.findById(riderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Rider not found: " + riderId));
+        return toResponse(rider);
     }
 
     // ── FR-R03 / FR-RI12 ─────────────────────────────────────
+
     @Transactional(readOnly = true)
     public List<RideResponse> getRideHistory(UUID riderId) {
-        // TODO: Phase 3 — implement
-        // 1. Verify rider exists → ResourceNotFoundException if absent
-        // 2. rideRepository.findAllByRiderId(riderId)
-        // 3. Map each Ride to RideResponse and return
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (!riderRepository.existsById(riderId)) {
+            throw new ResourceNotFoundException("Rider not found: " + riderId);
+        }
+        return rideRepository.findAllByRiderIdWithActors(riderId)
+                .stream()
+                .map(RideService::toResponse)
+                .toList();
     }
 
     // ── mapping helper ───────────────────────────────────────
