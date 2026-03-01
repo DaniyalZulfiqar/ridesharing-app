@@ -1,8 +1,40 @@
-# Ridesharing App — Phase 1 SDLC Artifact
+# Ridesharing App — Requirements
 **Version:** 1.0
-**Phase:** MVP
+**SDLC Phase:** 1 — Requirements
+**Product Phase:** 1 — MVP
 **Date:** 2026-02-25
 **Status:** Draft
+
+---
+
+## Phase Numbering — Two Separate Tracks
+
+This project uses two independent phase numbering systems. They are **not** interchangeable.
+
+### Track 1 — SDLC Phases (how we build)
+
+These are the engineering lifecycle stages. Each phase produces an artifact.
+
+| SDLC Phase | Activity | Artifact | Status |
+|---|---|---|---|
+| 1 | Requirements | `docs/phase1-requirements.md` (this doc) | ✅ Done |
+| 2 | System Design | `docs/phase2-system-design.md` | ✅ Done |
+| 3 | Implementation | Service layer + 59 unit tests | ✅ Done |
+| 4 | Integration Testing | `@SpringBootTest` + Testcontainers test suite | Up next |
+
+### Track 2 — Product Roadmap Phases (what we build)
+
+These are incremental product feature releases, independent of SDLC stage.
+
+| Product Phase | Theme | Key Features |
+|---|---|---|
+| 1 — MVP | Core ride lifecycle | Rider/Driver registration, ride request, accept/start/complete/cancel, fare calculation |
+| 2 — Enhancements | Smarter matching | Driver proximity matching, ratings & reviews, surge pricing, multiple vehicle types |
+| 3 — Platform | Auth & real-time | JWT authentication, GPS / WebSockets, payment processing, notifications, scheduled rides |
+| 4 — Scale | Architecture | Microservices decomposition, event streaming with Kafka |
+
+> **This document** covers **SDLC Phase 1** (Requirements) scoped to **Product Phase 1** (MVP).
+> Section 12 (Out of Scope) lists features deferred to later **Product Roadmap Phases**.
 
 ---
 
@@ -718,22 +750,22 @@ All errors return a consistent `problem+json` structure:
 
 ---
 
-## 12. Out of Scope (Phase 1)
+## 12. Out of Scope (Product Phase 1 MVP)
 
-The following will be addressed in future phases:
+The following features are deferred to later **Product Roadmap Phases** (see Phase Numbering section above).
 
-| Feature | Target Phase |
+| Feature | Target Product Phase |
 |---------|-------------|
-| Authentication (JWT) | Phase 3 |
-| Driver auto-matching by proximity | Phase 2 |
-| Ratings & reviews | Phase 2 |
-| Real-time GPS / WebSockets | Phase 3 |
-| Payment processing | Phase 3 |
-| Surge pricing | Phase 2 |
-| Multiple vehicle types | Phase 2 |
-| Scheduled rides | Phase 3 |
-| Microservices / Kafka | Phase 4 |
-| Notifications (email/SMS) | Phase 3 |
+| Driver auto-matching by proximity | Product Phase 2 |
+| Ratings & reviews | Product Phase 2 |
+| Surge pricing | Product Phase 2 |
+| Multiple vehicle types | Product Phase 2 |
+| Authentication (JWT) | Product Phase 3 |
+| Real-time GPS / WebSockets | Product Phase 3 |
+| Payment processing | Product Phase 3 |
+| Scheduled rides | Product Phase 3 |
+| Notifications (email/SMS) | Product Phase 3 |
+| Microservices / Kafka | Product Phase 4 |
 
 ---
 

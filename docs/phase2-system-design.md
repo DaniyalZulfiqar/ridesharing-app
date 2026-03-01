@@ -1,6 +1,7 @@
-# Ridesharing App — Phase 2: System Design
+# Ridesharing App — System Design
 **Version:** 1.0
-**Phase:** MVP
+**SDLC Phase:** 2 — System Design
+**Product Phase:** 1 — MVP
 **Date:** 2026-02-25
 **Status:** Draft
 
