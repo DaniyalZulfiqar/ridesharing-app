@@ -6,6 +6,7 @@ import com.ridesharing.dto.response.DriverResponse;
 import com.ridesharing.dto.response.DriverSummaryResponse;
 import com.ridesharing.dto.response.RideResponse;
 import com.ridesharing.entity.Driver;
+import com.ridesharing.enums.RideStatus;
 import com.ridesharing.exception.ConflictException;
 import com.ridesharing.exception.ResourceNotFoundException;
 import com.ridesharing.repository.DriverRepository;
@@ -29,49 +30,75 @@ public class DriverService {
     }
 
     // ── FR-D01 ───────────────────────────────────────────────
+
     public DriverResponse register(RegisterDriverRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. Check existsByEmail and existsByLicensePlate → ConflictException if duplicate
-        // 2. Build Driver entity (available=false by default)
-        // 3. Save and map to DriverResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (driverRepository.existsByEmail(request.getEmail())) {
+            throw new ConflictException("Email already registered: " + request.getEmail());
+        }
+        if (driverRepository.existsByLicensePlate(request.getLicensePlate())) {
+            throw new ConflictException("License plate already registered: " + request.getLicensePlate());
+        }
+
+        Driver driver = Driver.builder()
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .vehicleMake(request.getVehicleMake())
+                .vehicleModel(request.getVehicleModel())
+                .licensePlate(request.getLicensePlate())
+                .available(false)
+                .build();
+
+        return toResponse(driverRepository.save(driver));
     }
 
     // ── FR-D02 ───────────────────────────────────────────────
+
     @Transactional(readOnly = true)
     public DriverResponse getById(UUID driverId) {
-        // TODO: Phase 3 — implement
-        // 1. findById → ResourceNotFoundException if absent
-        // 2. Map to DriverResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new ResourceNotFoundException("Driver not found: " + driverId));
+        return toResponse(driver);
     }
 
     // ── FR-D03 ───────────────────────────────────────────────
+
     public DriverResponse updateAvailability(UUID driverId, UpdateAvailabilityRequest request) {
-        // TODO: Phase 3 — implement
-        // 1. findById → ResourceNotFoundException if absent
-        // 2. If going offline: check no active ride → ConflictException if busy
-        // 3. Set available flag, save, return updated DriverResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new ResourceNotFoundException("Driver not found: " + driverId));
+
+        boolean hasActiveRide = rideRepository.existsByDriverIdAndStatusIn(
+                driverId, List.of(RideStatus.ACCEPTED, RideStatus.IN_PROGRESS));
+
+        if (hasActiveRide) {
+            throw new ConflictException("Cannot change availability while an active ride is in progress.");
+        }
+
+        driver.setAvailable(request.getAvailable());
+        return toResponse(driverRepository.save(driver));
     }
 
     // ── FR-RI02 (used by RideService) ────────────────────────
+
     @Transactional(readOnly = true)
     public List<DriverSummaryResponse> getAvailableDrivers() {
-        // TODO: Phase 3 — implement
-        // 1. driverRepository.findAllByAvailableTrue()
-        // 2. Map each Driver to DriverSummaryResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        return driverRepository.findAllByAvailableTrue()
+                .stream()
+                .map(DriverService::toSummary)
+                .toList();
     }
 
     // ── FR-D04 / FR-RI13 ─────────────────────────────────────
+
     @Transactional(readOnly = true)
     public List<RideResponse> getRideHistory(UUID driverId) {
-        // TODO: Phase 3 — implement
-        // 1. Verify driver exists → ResourceNotFoundException if absent
-        // 2. rideRepository.findAllByDriverId(driverId)
-        // 3. Map each Ride to RideResponse
-        throw new UnsupportedOperationException("Not yet implemented");
+        if (!driverRepository.existsById(driverId)) {
+            throw new ResourceNotFoundException("Driver not found: " + driverId);
+        }
+        return rideRepository.findAllByDriverIdWithActors(driverId)
+                .stream()
+                .map(RideService::toResponse)
+                .toList();
     }
 
     // ── mapping helpers ──────────────────────────────────────
